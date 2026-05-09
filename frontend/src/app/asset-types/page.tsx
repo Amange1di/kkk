@@ -12,7 +12,6 @@ import {
   DialogTitle,
   Divider,
   FormControl,
-  Grid,
   IconButton,
   InputLabel,
   MenuItem,
@@ -226,55 +225,47 @@ export default function AssetTypesPage() {
             {editingType ? t('edit_asset_type') : t('add_asset_type')}
           </DialogTitle>
           <DialogContent>
-            <Grid container spacing={2} sx={{ mt: 1 }}>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label={t('asset_type_name')}
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label={t('asset_type_code')}
-                  value={formData.code}
-                  onChange={(e) => setFormData({ ...formData, code: e.target.value.toLowerCase().replace(/\s+/g, '-') })}
-                  required
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label={t('asset_type_description')}
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  multiline
-                  rows={3}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <FormControl fullWidth>
-                  <InputLabel>{t('status')}</InputLabel>
-                  <MenuItem
-                    value="true"
-                    selected={formData.is_active === true}
-                    onClick={() => setFormData({ ...formData, is_active: true })}
-                  >
-                    {t('active_status')}
-                  </MenuItem>
-                  <MenuItem
-                    value="false"
-                    selected={formData.is_active === false}
-                    onClick={() => setFormData({ ...formData, is_active: false })}
-                  >
-                    {t('inactive_status')}
-                  </MenuItem>
-                </FormControl>
-              </Grid>
-            </Grid>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+              <TextField
+                fullWidth
+                label={t('asset_type_name')}
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                required
+              />
+              <TextField
+                fullWidth
+                label={t('asset_type_code')}
+                value={formData.code}
+                onChange={(e) => setFormData({ ...formData, code: e.target.value.toLowerCase().replace(/\s+/g, '-') })}
+                required
+              />
+              <TextField
+                fullWidth
+                label={t('asset_type_description')}
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                multiline
+                rows={3}
+              />
+              <FormControl fullWidth>
+                <InputLabel>{t('status')}</InputLabel>
+                <MenuItem
+                  value="true"
+                  selected={formData.is_active === true}
+                  onClick={() => setFormData({ ...formData, is_active: true })}
+                >
+                  {t('active_status')}
+                </MenuItem>
+                <MenuItem
+                  value="false"
+                  selected={formData.is_active === false}
+                  onClick={() => setFormData({ ...formData, is_active: false })}
+                >
+                  {t('inactive_status')}
+                </MenuItem>
+              </FormControl>
+            </Box>
           </DialogContent>
           <DialogActions>
             <Button onClick={handleCloseDialog}>{t('cancel_btn')}</Button>
