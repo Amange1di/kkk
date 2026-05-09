@@ -2,6 +2,7 @@ services:
   - type: web
     name: edudata-backend
     env: python
+    rootDir: backend
     buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate
     startCommand: gunicorn edudata.wsgi:application --log-file - --bind 0.0.0.0:$PORT
     envVars:
