@@ -55,7 +55,7 @@ class AuditLogPermission(permissions.BasePermission):
 class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = AuditLog.objects.all()
     serializer_class = None  # Will be set dynamically
-    permission_classes = [AuditLogPermission]
+    permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['user', 'action', 'model_name']
     search_fields = ['user__username', 'model_name', 'object_name', 'changes']

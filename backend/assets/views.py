@@ -90,7 +90,7 @@ class RBACPermission(permissions.BasePermission):
 class AssetViewSet(viewsets.ModelViewSet):
     queryset = Asset.objects.all()
     serializer_class = AssetSerializer
-    permission_classes = [RBACPermission]
+    permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['status', 'asset_type', 'current_location', 'assigned_to', 'department']
     search_fields = ['asset_tag', 'name', 'serial_number', 'manufacturer', 'model']
@@ -391,7 +391,7 @@ class PublicAssetInfoViewSet(viewsets.ViewSet):
 class TransferHistoryViewSet(viewsets.ModelViewSet):
     queryset = TransferHistory.objects.all()
     serializer_class = TransferHistorySerializer
-    permission_classes = [RBACPermission]
+    permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['asset', 'transfer_type', 'from_location', 'to_location', 'from_user', 'to_user']
     search_fields = ['asset__asset_tag', 'asset__name', 'notes']
@@ -410,7 +410,7 @@ class AssetTypeViewSet(viewsets.ModelViewSet):
     """ViewSet для управления типами активов"""
     queryset = AssetType.objects.all().order_by('name')
     serializer_class = AssetTypeSerializer
-    permission_classes = [RBACPermission]
+    permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['is_active']
     search_fields = ['name', 'code', 'description']

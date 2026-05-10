@@ -22,7 +22,7 @@ class LocationPermission(permissions.BasePermission):
 
 class LocationViewSet(viewsets.ModelViewSet):
     queryset = Location.objects.all()
-    permission_classes = [LocationPermission]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_serializer_class(self):
         if self.action == 'list':
