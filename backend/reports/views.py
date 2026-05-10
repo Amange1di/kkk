@@ -79,9 +79,8 @@ class ReportSummaryViewSet(viewsets.ViewSet):
     """ViewSet только для сводки (не для экспорта)"""
     permission_classes = [permissions.IsAuthenticated]
     
-    @action(detail=False, methods=['get'], url_path='assets-summary')
-    def assets_summary(self, request):
-        """Сводка по активам"""
+    def list(self, request):
+        """Сводка по активам - основной маршрут /api/reports/"""
         queryset = Asset.objects.all()
         
         # По статусу
@@ -103,6 +102,11 @@ class ReportSummaryViewSet(viewsets.ViewSet):
             'recent_count': recent.count(),
             'total': queryset.count()
         })
+    
+    @action(detail=False, methods=['get'])
+    def assets_summary(self, request):
+        """Сводка по активам - альтернативный маршрут /api/reports/assets-summary/"""
+        return self.list(request)
     
     @action(detail=False, methods=['get'], url_path='export-assets')
     def export_assets(self, request):
