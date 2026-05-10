@@ -684,6 +684,7 @@ class AssetTypeViewSet(viewsets.ModelViewSet):
     filterset_fields = ['is_active']
     search_fields = ['name', 'code', 'description']
     ordering_fields = ['name', 'created_at']
+    http_method_names = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options']
 
     def perform_create(self, serializer):
         serializer.save()
