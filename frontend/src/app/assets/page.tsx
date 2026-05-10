@@ -301,7 +301,11 @@ export default function AssetsPage() {
                 <TableRow key={asset.id}>
                   <TableCell>{asset.asset_tag}</TableCell>
                   <TableCell>{asset.name}</TableCell>
-                  <TableCell>{asset.asset_type}</TableCell>
+                  <TableCell>
+                    {typeof asset.asset_type === 'object' 
+                      ? asset.asset_type?.name || '-' 
+                      : asset.asset_type || '-'}
+                  </TableCell>
                   <TableCell>
                     <Chip
                       label={t(asset.status) || asset.status.replace("_", " ")}
