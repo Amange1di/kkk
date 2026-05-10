@@ -1,6 +1,6 @@
 from rest_framework import viewsets, permissions, filters, status
 from rest_framework.response import Response
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view
 from django_filters.rest_framework import DjangoFilterBackend
 from django.shortcuts import get_object_or_404
 from django.db import transaction
@@ -323,6 +323,69 @@ class AssetViewSet(viewsets.ModelViewSet):
             'qr_code': f'data:image/png;base64,{img_base64}',
             'url': qr_url
         })
+
+
+class PublicAssetInfoViewSet(viewsets.ViewSet):
+    """
+    Публичный endpoint для просмотра информации об активе по QR-коду (asset_tag)
+    Без авторизации
+    """
+    permission_classes = [permissions.AllowAny]
+    
+    @action(detail=False, methods=['get'], url_path='scan/(?P<asset_tag>[^/.]+)', url_name='scan')
+    def get_asset_info(self, request, asset_tag=None):
+        """Получение информации об активе по asset_tag без авторизации"""
+        if not asset_tag:
+            return Response(
+                {'error': 'asset_tag is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            asset = Asset.objects.select_related('current_location', 'assigned_to', 'asset_type').get(asset_tag=asset_tag)
+            
+            # Логирование сканирования (без user, так как публичный доступ)
+            try:
+                AuditLog.objects.create(
+                    user=None,
+                    action='public_scan',
+                    model_name='Asset',
+                    object_id=str(asset.id),
+                    object_name=str(asset),
+                    changes={'scanned_via': 'public_qr'},
+                    ip_address=request.META.get('REMOTE_ADDR'),
+                    user_agent=request.META.get('HTTP_USER_AGENT', '')
+                )
+            except Exception:
+                pass
+            
+            return Response({
+                'found': True,
+                'asset': {
+                    'id': asset.id,
+                    'asset_tag': asset.asset_tag,
+                    'name': asset.name,
+                    'description': asset.description,
+                    'asset_type': asset.asset_type.name if asset.asset_type else None,
+                    'status': asset.get_status_display(),
+                    'status_key': asset.status,
+                    'location': asset.current_location.name if asset.current_location else None,
+                    'assigned_to': f"{asset.assigned_to.first_name} {asset.assigned_to.last_name}".strip() if asset.assigned_to else None,
+                    'manufacturer': asset.manufacturer,
+                    'model': asset.model,
+                    'serial_number': asset.serial_number,
+                    'purchase_date': asset.purchase_date.isoformat() if asset.purchase_date else None,
+                    'purchase_price': str(asset.purchase_price) if asset.purchase_price else None,
+                    'currency': asset.currency,
+                }
+            })
+            
+        except Asset.DoesNotExist:
+            return Response({
+                'found': False,
+                'message': 'Asset not found',
+                'asset_tag': asset_tag
+            }, status=status.HTTP_404_NOT_FOUND)
 
 
 class TransferHistoryViewSet(viewsets.ModelViewSet):
