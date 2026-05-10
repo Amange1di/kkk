@@ -81,7 +81,7 @@ export const assetsApi = {
   checkin: (id: number, data: any) => apiClient.post(`/assets/${id}/checkin/`, data),
   transfer: (id: number, data: any) => apiClient.post(`/assets/${id}/transfer/`, data),
   getQrCode: (id: number) => apiClient.get(`/assets/${id}/qr_code/`),
-  scan: (assetTag: string) => apiClient.post('/assets/scan/', { asset_tag: assetTag }),
+  scan: (assetTag: string) => apiClient.get('/public/', { params: { asset_tag: assetTag } }),
 };
 
 export const locationsApi = {

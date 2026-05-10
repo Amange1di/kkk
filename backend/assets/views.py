@@ -16,6 +16,62 @@ import base64
 from datetime import datetime
 
 
+@api_view(['GET'])
+def public_asset_scan(request, asset_tag):
+    """Публичный endpoint для просмотра информации об активе по asset_tag без авторизации"""
+    if not asset_tag:
+        return Response(
+            {'error': 'asset_tag is required'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    try:
+        asset = Asset.objects.select_related('current_location', 'assigned_to', 'asset_type').get(asset_tag=asset_tag)
+        
+        # Логирование сканирования (без user, так как публичный доступ)
+        try:
+            AuditLog.objects.create(
+                user=None,
+                action='public_scan',
+                model_name='Asset',
+                object_id=str(asset.id),
+                object_name=str(asset),
+                changes={'scanned_via': 'public_qr'},
+                ip_address=request.META.get('REMOTE_ADDR'),
+                user_agent=request.META.get('HTTP_USER_AGENT', '')
+            )
+        except Exception:
+            pass
+        
+        return Response({
+            'found': True,
+            'asset': {
+                'id': asset.id,
+                'asset_tag': asset.asset_tag,
+                'name': asset.name,
+                'description': asset.description,
+                'asset_type': asset.asset_type.name if asset.asset_type else None,
+                'status': asset.get_status_display(),
+                'status_key': asset.status,
+                'location': asset.current_location.name if asset.current_location else None,
+                'assigned_to': f"{asset.assigned_to.first_name} {asset.assigned_to.last_name}".strip() if asset.assigned_to else None,
+                'manufacturer': asset.manufacturer,
+                'model': asset.model,
+                'serial_number': asset.serial_number,
+                'purchase_date': asset.purchase_date.isoformat() if asset.purchase_date else None,
+                'purchase_price': str(asset.purchase_price) if asset.purchase_price else None,
+                'currency': asset.currency,
+            }
+        })
+        
+    except Asset.DoesNotExist:
+        return Response({
+            'found': False,
+            'message': 'Asset not found',
+            'asset_tag': asset_tag
+        }, status=status.HTTP_404_NOT_FOUND)
+
+
 def log_audit_action(request, action, model_name=None, object_id=None, object_name=None, changes=None):
     """Функция для логирования действий в аудит"""
     if request.user and request.user.is_authenticated:
@@ -249,92 +305,11 @@ class AssetViewSet(viewsets.ModelViewSet):
         
         return Response({'status': 'Damage reported successfully'})
     
-    @action(detail=False, methods=['post'], permission_classes=[RBACPermission])
+    @action(detail=False, methods=['post'], permission_classes=[permissions.AllowAny])
     def scan(self, request):
-        """Сканирование QR-кода актива по asset_tag"""
+        """Сканирование QR-кода актива по asset_tag (публичный доступ)"""
         asset_tag = request.data.get('asset_tag')
         
-        if not asset_tag:
-            return Response(
-                {'error': 'asset_tag is required'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        try:
-            asset = Asset.objects.select_related('current_location', 'assigned_to').get(asset_tag=asset_tag)
-            
-            log_audit_action(
-                request, 'scan', 'Asset', asset.id, str(asset),
-                {'scanned_by': request.user.username}
-            )
-            
-            return Response({
-                'found': True,
-                'asset': {
-                    'id': asset.id,
-                    'asset_tag': asset.asset_tag,
-                    'name': asset.name,
-                    'asset_type': asset.get_asset_type_display(),
-                    'status': asset.get_status_display(),
-                    'status_key': asset.status,
-                    'location': asset.current_location.name if asset.current_location else None,
-                    'assigned_to': asset.assigned_to.username if asset.assigned_to else None,
-                    'manufacturer': asset.manufacturer,
-                    'model': asset.model,
-                    'serial_number': asset.serial_number,
-                    'purchase_date': asset.purchase_date.isoformat() if asset.purchase_date else None,
-                    'purchase_price': str(asset.purchase_price) if asset.purchase_price else None,
-                }
-            })
-            
-        except Asset.DoesNotExist:
-            return Response({
-                'found': False,
-                'message': 'Asset not found'
-            }, status=status.HTTP_404_NOT_FOUND)
-    
-    @action(detail=True, methods=['get'], permission_classes=[RBACPermission])
-    def qr_code(self, request, pk=None):
-        """Генерация QR-кода для актива"""
-        asset = self.get_object()
-        
-        log_audit_action(
-            request, 'scan', 'Asset', asset.id, str(asset)
-        )
-        
-        # QR содержит URL для сканирования
-        qr_url = f"{request.scheme}://{request.get_host()}/api/assets/{asset.asset_tag}/scan/"
-        
-        # Создаем QR-код
-        qr = qrcode.QRCode(version=1, box_size=10, border=5)
-        qr.add_data(qr_url)
-        qr.make(fit=True)
-        
-        # Генерируем изображение
-        img = qr.make_image(fill_color="black", back_color="white")
-        
-        # Сохраняем в base64 для отправки
-        buffer = io.BytesIO()
-        img.save(buffer, format='PNG')
-        img_base64 = base64.b64encode(buffer.getvalue()).decode()
-        
-        return Response({
-            'asset_tag': asset.asset_tag,
-            'qr_code': f'data:image/png;base64,{img_base64}',
-            'url': qr_url
-        })
-
-
-class PublicAssetInfoViewSet(viewsets.ViewSet):
-    """
-    Публичный endpoint для просмотра информации об активе по QR-коду (asset_tag)
-    Без авторизации
-    """
-    permission_classes = [permissions.AllowAny]
-    
-    @action(detail=False, methods=['get'], url_path='scan/(?P<asset_tag>[^/.]+)', url_name='scan')
-    def get_asset_info(self, request, asset_tag=None):
-        """Получение информации об активе по asset_tag без авторизации"""
         if not asset_tag:
             return Response(
                 {'error': 'asset_tag is required'},
@@ -386,6 +361,300 @@ class PublicAssetInfoViewSet(viewsets.ViewSet):
                 'message': 'Asset not found',
                 'asset_tag': asset_tag
             }, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['GET', 'POST'])
+def public_asset_scan(request, asset_tag=None):
+    """
+    Публичный endpoint для просмотра информации об активе по QR-коду (asset_tag)
+    Без авторизации
+    """
+    if not asset_tag:
+        asset_tag = request.data.get('asset_tag') if request.method == 'POST' else request.query_params.get('asset_tag')
+    
+    if not asset_tag:
+        return Response(
+            {'error': 'asset_tag is required'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    try:
+        asset = Asset.objects.select_related('current_location', 'assigned_to', 'asset_type').get(asset_tag=asset_tag)
+        
+        # Логирование сканирования (без user, так как публичный доступ)
+        try:
+            AuditLog.objects.create(
+                user=None,
+                action='public_scan',
+                model_name='Asset',
+                object_id=str(asset.id),
+                object_name=str(asset),
+                changes={'scanned_via': 'public_qr'},
+                ip_address=request.META.get('REMOTE_ADDR'),
+                user_agent=request.META.get('HTTP_USER_AGENT', '')
+            )
+        except Exception:
+            pass
+        
+        return Response({
+            'found': True,
+            'asset': {
+                'id': asset.id,
+                'asset_tag': asset.asset_tag,
+                'name': asset.name,
+                'description': asset.description,
+                'asset_type': asset.asset_type.name if asset.asset_type else None,
+                'status': asset.get_status_display(),
+                'status_key': asset.status,
+                'location': asset.current_location.name if asset.current_location else None,
+                'assigned_to': f"{asset.assigned_to.first_name} {asset.assigned_to.last_name}".strip() if asset.assigned_to else None,
+                'manufacturer': asset.manufacturer,
+                'model': asset.model,
+                'serial_number': asset.serial_number,
+                'purchase_date': asset.purchase_date.isoformat() if asset.purchase_date else None,
+                'purchase_price': str(asset.purchase_price) if asset.purchase_price else None,
+                'currency': asset.currency,
+            }
+        })
+        
+    except Asset.DoesNotExist:
+        return Response({
+            'found': False,
+            'message': 'Asset not found',
+            'asset_tag': asset_tag
+        }, status=status.HTTP_404_NOT_FOUND)
+
+
+class PublicAssetInfoViewSet(viewsets.ViewSet):
+    """
+    Публичный endpoint для просмотра информации об активе по asset_tag
+    Без авторизации
+    """
+    permission_classes = [permissions.AllowAny]
+    
+    def list(self, request):
+        """Получение информации об активе по asset_tag (GET /api/assets/public/?asset_tag=ABC123)"""
+        asset_tag = request.query_params.get('asset_tag')
+        
+        if not asset_tag:
+            return Response(
+                {'error': 'asset_tag is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            asset = Asset.objects.select_related('current_location', 'assigned_to', 'asset_type').get(asset_tag=asset_tag)
+            
+            # Логирование сканирования (без user, так как публичный доступ)
+            try:
+                AuditLog.objects.create(
+                    user=None,
+                    action='public_scan',
+                    model_name='Asset',
+                    object_id=str(asset.id),
+                    object_name=str(asset),
+                    changes={'scanned_via': 'public_qr'},
+                    ip_address=request.META.get('REMOTE_ADDR'),
+                    user_agent=request.META.get('HTTP_USER_AGENT', '')
+                )
+            except Exception:
+                pass
+            
+            return Response({
+                'found': True,
+                'asset': {
+                    'id': asset.id,
+                    'asset_tag': asset.asset_tag,
+                    'name': asset.name,
+                    'description': asset.description,
+                    'asset_type': asset.asset_type.name if asset.asset_type else None,
+                    'status': asset.get_status_display(),
+                    'status_key': asset.status,
+                    'location': asset.current_location.name if asset.current_location else None,
+                    'assigned_to': f"{asset.assigned_to.first_name} {asset.assigned_to.last_name}".strip() if asset.assigned_to else None,
+                    'manufacturer': asset.manufacturer,
+                    'model': asset.model,
+                    'serial_number': asset.serial_number,
+                    'purchase_date': asset.purchase_date.isoformat() if asset.purchase_date else None,
+                    'purchase_price': str(asset.purchase_price) if asset.purchase_price else None,
+                    'currency': asset.currency,
+                }
+            })
+            
+        except Asset.DoesNotExist:
+            return Response({
+                'found': False,
+                'message': 'Asset not found',
+                'asset_tag': asset_tag
+            }, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['GET'])
+def public_scan_asset(request, asset_tag):
+    """Получение информации об активе по asset_tag без авторизации (GET)"""
+    if not asset_tag:
+        return Response(
+            {'error': 'asset_tag is required'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    try:
+        asset = Asset.objects.select_related('current_location', 'assigned_to', 'asset_type').get(asset_tag=asset_tag)
+        
+        # Логирование сканирования (без user, так как публичный доступ)
+        try:
+            AuditLog.objects.create(
+                user=None,
+                action='public_scan',
+                model_name='Asset',
+                object_id=str(asset.id),
+                object_name=str(asset),
+                changes={'scanned_via': 'public_qr'},
+                ip_address=request.META.get('REMOTE_ADDR'),
+                user_agent=request.META.get('HTTP_USER_AGENT', '')
+            )
+        except Exception:
+            pass
+        
+        return Response({
+            'found': True,
+            'asset': {
+                'id': asset.id,
+                'asset_tag': asset.asset_tag,
+                'name': asset.name,
+                'description': asset.description,
+                'asset_type': asset.asset_type.name if asset.asset_type else None,
+                'status': asset.get_status_display(),
+                'status_key': asset.status,
+                'location': asset.current_location.name if asset.current_location else None,
+                'assigned_to': f"{asset.assigned_to.first_name} {asset.assigned_to.last_name}".strip() if asset.assigned_to else None,
+                'manufacturer': asset.manufacturer,
+                'model': asset.model,
+                'serial_number': asset.serial_number,
+                'purchase_date': asset.purchase_date.isoformat() if asset.purchase_date else None,
+                'purchase_price': str(asset.purchase_price) if asset.purchase_price else None,
+                'currency': asset.currency,
+            }
+        })
+        
+    except Asset.DoesNotExist:
+        return Response({
+            'found': False,
+            'message': 'Asset not found',
+            'asset_tag': asset_tag
+        }, status=status.HTTP_404_NOT_FOUND)
+        """Получение информации об активе по asset_tag без авторизации"""
+        if not asset_tag:
+            # Для POST запроса получаем asset_tag из тела
+            if request.method == 'POST':
+                asset_tag = request.data.get('asset_tag')
+            if not asset_tag:
+                return Response(
+                    {'error': 'asset_tag is required'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
+        try:
+            asset = Asset.objects.select_related('current_location', 'assigned_to', 'asset_type').get(asset_tag=asset_tag)
+            
+            # Логирование сканирования (без user, так как публичный доступ)
+            try:
+                AuditLog.objects.create(
+                    user=None,
+                    action='public_scan',
+                    model_name='Asset',
+                    object_id=str(asset.id),
+                    object_name=str(asset),
+                    changes={'scanned_via': 'public_qr'},
+                    ip_address=request.META.get('REMOTE_ADDR'),
+                    user_agent=request.META.get('HTTP_USER_AGENT', '')
+                )
+            except Exception:
+                pass
+            
+            return Response({
+                'found': True,
+                'asset': {
+                    'id': asset.id,
+                    'asset_tag': asset.asset_tag,
+                    'name': asset.name,
+                    'description': asset.description,
+                    'asset_type': asset.asset_type.name if asset.asset_type else None,
+                    'status': asset.get_status_display(),
+                    'status_key': asset.status,
+                    'location': asset.current_location.name if asset.current_location else None,
+                    'assigned_to': f"{asset.assigned_to.first_name} {asset.assigned_to.last_name}".strip() if asset.assigned_to else None,
+                    'manufacturer': asset.manufacturer,
+                    'model': asset.model,
+                    'serial_number': asset.serial_number,
+                    'purchase_date': asset.purchase_date.isoformat() if asset.purchase_date else None,
+                    'purchase_price': str(asset.purchase_price) if asset.purchase_price else None,
+                    'currency': asset.currency,
+                }
+            })
+            
+        except Asset.DoesNotExist:
+            return Response({
+                'found': False,
+                'message': 'Asset not found',
+                'asset_tag': asset_tag
+            }, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['GET'])
+def public_asset_scan(request, asset_tag):
+    """Публичный endpoint для просмотра информации об активе по asset_tag без авторизации"""
+    if not asset_tag:
+        return Response(
+            {'error': 'asset_tag is required'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    try:
+        asset = Asset.objects.select_related('current_location', 'assigned_to', 'asset_type').get(asset_tag=asset_tag)
+        
+        # Логирование сканирования (без user, так как публичный доступ)
+        try:
+            AuditLog.objects.create(
+                user=None,
+                action='public_scan',
+                model_name='Asset',
+                object_id=str(asset.id),
+                object_name=str(asset),
+                changes={'scanned_via': 'public_qr'},
+                ip_address=request.META.get('REMOTE_ADDR'),
+                user_agent=request.META.get('HTTP_USER_AGENT', '')
+            )
+        except Exception:
+            pass
+        
+        return Response({
+            'found': True,
+            'asset': {
+                'id': asset.id,
+                'asset_tag': asset.asset_tag,
+                'name': asset.name,
+                'description': asset.description,
+                'asset_type': asset.asset_type.name if asset.asset_type else None,
+                'status': asset.get_status_display(),
+                'status_key': asset.status,
+                'location': asset.current_location.name if asset.current_location else None,
+                'assigned_to': f"{asset.assigned_to.first_name} {asset.assigned_to.last_name}".strip() if asset.assigned_to else None,
+                'manufacturer': asset.manufacturer,
+                'model': asset.model,
+                'serial_number': asset.serial_number,
+                'purchase_date': asset.purchase_date.isoformat() if asset.purchase_date else None,
+                'purchase_price': str(asset.purchase_price) if asset.purchase_price else None,
+                'currency': asset.currency,
+            }
+        })
+        
+    except Asset.DoesNotExist:
+        return Response({
+            'found': False,
+            'message': 'Asset not found',
+            'asset_tag': asset_tag
+        }, status=status.HTTP_404_NOT_FOUND)
 
 
 class TransferHistoryViewSet(viewsets.ModelViewSet):
