@@ -302,9 +302,9 @@ export default function AssetsPage() {
                   <TableCell>{asset.asset_tag}</TableCell>
                   <TableCell>{asset.name}</TableCell>
                   <TableCell>
-                    {asset.asset_type && typeof asset.asset_type === 'object' 
-                      ? (asset.asset_type as any).name || '-' 
-                      : asset.asset_type || '-'}
+                    {asset.asset_type && typeof asset.asset_type === "object"
+                      ? (asset.asset_type as any).name || "-"
+                      : asset.asset_type || "-"}
                   </TableCell>
                   <TableCell>
                     <Chip

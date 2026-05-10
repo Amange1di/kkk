@@ -5,7 +5,7 @@ from .views import AuditLogViewSet, ReportSummaryViewSet, ReportExportViewSet
 router = DefaultRouter()
 router.register(r'audit-logs', AuditLogViewSet, basename='audit-log')
 router.register(r'', ReportSummaryViewSet, basename='report-summary')
-router.register(r'export', ReportExportViewSet, basename='report-export')
+router.register(r'export-assets', ReportExportViewSet, basename='report-export')
 
 urlpatterns = [
     path('', include(router.urls)),
