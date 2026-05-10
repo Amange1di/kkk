@@ -1,64 +1,54 @@
-import logging
-from django.utils.deprecation import MiddlewareMixin
-from accounts.models import CustomUser
+from django.middleware.csrf import CsrfViewMiddleware
+from django.http import JsonResponse
+from django.contrib.auth import get_user_model
 from reports.models import AuditLog
+import re
 
-logger = logging.getLogger(__name__)
+UserModel = get_user_model()
 
 
-class AuditMiddleware(MiddlewareMixin):
+class ApiCsrfExemptionMiddleware:
     """
-    Middleware для автоматического логирования действий пользователей
+    Middleware для пропуска CSRF проверки для API эндпоинтов
+    Используется с JWT аутентификацией, где CSRF не нужен
     """
-    
-    def process_request(self, request):
-        # Сохраняем IP и user_agent для аудита
-        request.audit_ip = self.get_client_ip(request)
-        request.audit_user_agent = request.META.get('HTTP_USER_AGENT', '')
-    
-    def process_response(self, request, response):
-        # Логирование login/logout
-        if hasattr(request, 'session'):
-            if 'user_id' in request.session and not hasattr(request, 'audit_logged'):
-                # Проверяем, был ли это логин
-                if 'login' in request.path:
-                    self.log_action(request, 'login')
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        # Пропускаем CSRF для всех /api/ путей
+        if request.path.startswith('/api/'):
+            # Отключаем CSRF проверку для этого запроса
+            request._dont_enforce_csrf_checks = True
+        
+        return self.get_response(request)
+
+
+class AuditMiddleware:
+    """
+    Middleware для логирования действий пользователей в аудит
+    """
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        
+        # Логирование только для POST, PUT, PATCH, DELETE запросов
+        if request.method in ['POST', 'PUT', 'PATCH', 'DELETE']:
+            if request.user and request.user.is_authenticated:
+                try:
+                    AuditLog.objects.create(
+                        user=request.user,
+                        action=request.method,
+                        model_name=request.path.split('/')[2] if len(request.path.split('/')) > 2 else '',
+                        object_id='',
+                        object_name='',
+                        changes={},
+                        ip_address=request.META.get('REMOTE_ADDR'),
+                        user_agent=request.META.get('HTTP_USER_AGENT', '')
+                    )
+                except Exception:
+                    pass
         
         return response
-    
-    def get_client_ip(self, request):
-        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-        if x_forwarded_for:
-            ip = x_forwarded_for.split(',')[0]
-        else:
-            ip = request.META.get('REMOTE_ADDR')
-        return ip
-    
-    def log_action(self, request, action, model_name=None, object_id=None, object_name=None, changes=None):
-        """Создание записи аудита"""
-        if not request.user or not request.user.is_authenticated:
-            return
-        
-        try:
-            AuditLog.objects.create(
-                user=request.user,
-                action=action,
-                model_name=model_name or '',
-                object_id=str(object_id) if object_id else '',
-                object_name=object_name or '',
-                changes=changes,
-                ip_address=request.audit_ip if hasattr(request, 'audit_ip') else None,
-                user_agent=request.audit_user_agent if hasattr(request, 'audit_user_agent') else None
-            )
-            logger.info(f"Audit: {request.user.username} - {action} on {model_name}:{object_id}")
-        except Exception as e:
-            logger.error(f"Failed to create audit log: {e}")
-
-
-def log_audit_action(request, action, model_name=None, object_id=None, object_name=None, changes=None):
-    """
-    Функция для ручного логирования действий
-    Используется в views для специфичных действий
-    """
-    middleware = AuditMiddleware()
-    middleware.log_action(request, action, model_name, object_id, object_name, changes)
