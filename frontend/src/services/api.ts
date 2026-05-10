@@ -94,7 +94,7 @@ export const locationsApi = {
 
 export const reportsApi = {
   exportAssets: (format: string, params?: any) => 
-    apiClient.get(`/reports/export/`, { 
+    apiClient.get(`/reports/export-assets/`, { 
       params: { ...params, format },
       responseType: 'blob'
     }),
