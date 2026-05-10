@@ -34,6 +34,7 @@ import {
   Refresh as RefreshIcon,
 } from '@mui/icons-material';
 import { assetTypesApi, AssetType } from '@/services/api';
+import DashboardLayout from '@/components/DashboardLayout';
 
 export default function AssetTypesPage() {
   const { t, i18n } = useTranslation();
@@ -128,7 +129,8 @@ export default function AssetTypesPage() {
   );
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+    <DashboardLayout>
+      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Paper sx={{ p: 3 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
           <Typography variant="h4" component="h1">
@@ -289,6 +291,7 @@ export default function AssetTypesPage() {
           </Button>
         </DialogActions>
       </Dialog>
-    </Container>
+      </Container>
+    </DashboardLayout>
   );
 }
