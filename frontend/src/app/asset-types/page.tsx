@@ -251,14 +251,14 @@ export default function AssetTypesPage() {
               <FormControl fullWidth>
                 <InputLabel>{t('status')}</InputLabel>
                 <MenuItem
-                  value={true}
+                  value="true"
                   selected={formData.is_active === true}
                   onClick={() => setFormData({ ...formData, is_active: true })}
                 >
                   {t('active_status')}
                 </MenuItem>
                 <MenuItem
-                  value={false}
+                  value="false"
                   selected={formData.is_active === false}
                   onClick={() => setFormData({ ...formData, is_active: false })}
                 >
