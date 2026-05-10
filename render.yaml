@@ -3,7 +3,7 @@ services:
     name: edudata-backend
     env: python
     buildCommand: pip install -r backend/requirements.txt && cd backend && python manage.py collectstatic --noinput && python manage.py migrate
-    startCommand: gunicorn --chdir backend edudata.wsgi:application --log-file - --bind 0.0.0.0:$PORT
+    startCommand: python -m gunicorn edudata.wsgi:application --log-file - --bind 0.0.0.0:$PORT
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.9
@@ -21,4 +21,7 @@ services:
         sync: false
       - key: CORS_ALLOWED_ORIGINS
         value: "https://your-domain.onrender.com"
+        sync: false
+      - key: PYTHONPATH
+        value: /opt/render/project/src/backend
         sync: false
