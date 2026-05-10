@@ -94,12 +94,12 @@ export const locationsApi = {
 
 export const reportsApi = {
   exportAssets: (format: string, params?: any) => 
-    apiClient.get(`/reports/export/?format=${format}`, { 
-      params,
+    apiClient.get(`/reports/export-assets/`, { 
+      params: { ...params, format },
       responseType: 'blob'
     }),
   getSummary: () => apiClient.get('/reports/assets-summary/'),
-  getAuditLogs: (params?: any) => apiClient.get('/reports/audit-logs/', { params }),
+  getAuditLogs: (params?: any) => apiClient.get('/reports/auditlogs/', { params }),
 };
 
 export const assetTypesApi = {
