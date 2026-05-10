@@ -104,6 +104,8 @@ WSGI_APPLICATION = "edudata.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+import dj_database_url
+
 # PostgreSQL configuration
 DATABASES = {
     "default": {
@@ -116,8 +118,12 @@ DATABASES = {
     }
 }
 
+# Если задан DATABASE_URL (например, на Render), используем его
+DATABASE_URL = config('DATABASE_URL', default=None)
+if DATABASE_URL:
+    DATABASES["default"] = dj_database_url.config(conn_max_age=600)
 # Если не заданы PostgreSQL параметры, используем SQLite по умолчанию
-if not DATABASES["default"]["ENGINE"]:
+elif not DATABASES["default"]["ENGINE"]:
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
