@@ -305,6 +305,37 @@ class AssetViewSet(viewsets.ModelViewSet):
         
         return Response({'status': 'Damage reported successfully'})
     
+    @action(detail=True, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    def qr_code(self, request, pk=None):
+        """Генерация QR-кода для актива"""
+        asset = self.get_object()
+        
+        log_audit_action(
+            request, 'scan', 'Asset', asset.id, str(asset)
+        )
+        
+        # QR содержит URL для публичного сканирования
+        qr_url = f"{request.scheme}://{request.get_host()}/api/assets/public/?asset_tag={asset.asset_tag}"
+        
+        # Создаем QR-код
+        qr = qrcode.QRCode(version=1, box_size=10, border=5)
+        qr.add_data(qr_url)
+        qr.make(fit=True)
+        
+        # Генерируем изображение
+        img = qr.make_image(fill_color="black", back_color="white")
+        
+        # Сохраняем в base64 для отправки
+        buffer = io.BytesIO()
+        img.save(buffer, format='PNG')
+        img_base64 = base64.b64encode(buffer.getvalue()).decode()
+        
+        return Response({
+            'asset_tag': asset.asset_tag,
+            'qr_code': f'data:image/png;base64,{img_base64}',
+            'url': qr_url
+        })
+    
     @action(detail=False, methods=['post'], permission_classes=[permissions.AllowAny])
     def scan(self, request):
         """Сканирование QR-кода актива по asset_tag (публичный доступ)"""
