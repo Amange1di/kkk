@@ -35,7 +35,8 @@ import {
 import axios from "axios";
 import { useTranslation } from "react-i18next";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || " http://127.0.0.1:8000/api";
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL || "https://kkk-fwjw.onrender.com/api";
 
 // Создаём axios инстанс с токеном для запросов к users
 const usersClient = axios.create({
