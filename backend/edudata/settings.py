@@ -150,6 +150,12 @@ if DEBUG:
 else:
     CORS_ALLOW_ALL_ORIGINS = False
 
+# CSRF Trusted Origins (для production с JWT)
+CSRF_TRUSTED_ORIGINS = config(
+    'CSRF_TRUSTED_ORIGINS',
+    default='http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,https://kkk-vdxl.vercel.app,https://kkk-fwjw.onrender.com'
+).split(',')
+
 CORS_ALLOW_METHODS = [
     'DELETE',
     'GET',

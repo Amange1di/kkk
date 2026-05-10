@@ -1,5 +1,7 @@
 from rest_framework import viewsets, permissions, filters
 from django_filters.rest_framework import DjangoFilterBackend
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 from .models import Location
 from .serializers import LocationSerializer, LocationListSerializer
 
@@ -20,6 +22,7 @@ class LocationPermission(permissions.BasePermission):
         return False
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class LocationViewSet(viewsets.ModelViewSet):
     queryset = Location.objects.all()
     permission_classes = [LocationPermission]
