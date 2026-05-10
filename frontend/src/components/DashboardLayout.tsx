@@ -58,7 +58,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const menuItems = [
     { text: t('dashboard'), icon: <DashboardIcon />, path: '/dashboard' },
     { text: t('assets'), icon: <InventoryIcon />, path: '/assets' },
-    { text: t('asset_types'), icon: <CategoryIcon />, path: '/asset-types' },
+    { text: t('asset_types'), icon: <CategoryIcon />, path: '/assettypes' },
     { text: t('locations'), icon: <LocationIcon />, path: '/locations' },
     { text: t('scan_qr'), icon: <QrIcon />, path: '/scan' },
     { text: t('reports'), icon: <ReportIcon />, path: '/reports' },
