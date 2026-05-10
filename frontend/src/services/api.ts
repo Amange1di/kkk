@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL ='https://aaaaaaaaaaasom5000.onrender.com/api';
+const API_URL ='https://kkk-fwjw.onrender.com/api';
 
 // Создаём отдельный экземпляр axios с интерцептором для токена
 const apiClient = axios.create({
