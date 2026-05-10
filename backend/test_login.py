@@ -6,7 +6,10 @@ django.setup()
 from django.test import Client, override_settings
 import json
 
-with override_settings(ALLOWED_HOSTS=['testserver', 'localhost', '127.0.0.1']):
+with override_settings(
+    ALLOWED_HOSTS=['testserver', 'localhost', '127.0.0.1'],
+    SECURE_SSL_REDIRECT=False,
+):
     c = Client()
     data = json.dumps({'username': 'admin', 'password': 'admin123'})
     r = c.post('/api/accounts/login/', data, content_type='application/json')

@@ -3,7 +3,7 @@ services:
     name: edudata-backend
     env: python
     rootDir: backend
-    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate && python manage.py bootstrap_admin
     startCommand: gunicorn edudata.wsgi:application --log-file - --bind 0.0.0.0:$PORT
     envVars:
       - key: PYTHON_VERSION
@@ -53,3 +53,12 @@ services:
           type: frontend
           property: url
           prefix: https://
+      - key: DJANGO_SUPERUSER_USERNAME
+        value: admin
+        sync: false
+      - key: DJANGO_SUPERUSER_EMAIL
+        value: admin@edudata.com
+        sync: false
+      - key: DJANGO_SUPERUSER_PASSWORD
+        value: admin123
+        sync: false
