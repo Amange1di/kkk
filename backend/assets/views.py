@@ -1,10 +1,12 @@
 from rest_framework import viewsets, permissions, filters, status
 from rest_framework.response import Response
 from rest_framework.decorators import action, api_view
+from rest_framework.permissions import BasePermission
 from django_filters.rest_framework import DjangoFilterBackend
 from django.shortcuts import get_object_or_404
 from django.db import transaction
 from django.core.cache import cache
+from django.utils import ip_address
 from .models import Asset, TransferHistory, AssetType
 from .serializers import AssetSerializer, TransferHistorySerializer, AssetTypeSerializer
 from accounts.models import CustomUser
@@ -14,6 +16,27 @@ import qrcode
 import io
 import base64
 from datetime import datetime
+import ipaddress
+
+
+def is_internal_ip(ip_string):
+    """Проверяет, является ли IP-адрес внутренним (частным)"""
+    try:
+        ip = ipaddress.ip_address(ip_string)
+        # Частные IP-адреса: 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, localhost
+        return ip.is_private
+    except ValueError:
+        return False
+
+
+class InternalNetworkOnlyPermission(BasePermission):
+    """Разрешает доступ только из внутренней сети (частные IP-адреса)"""
+    def has_permission(self, request, view):
+        client_ip = request.META.get('REMOTE_ADDR', '')
+        # Убираем IPv6 префикс если есть
+        if client_ip.startswith('::ffff:'):
+            client_ip = client_ip[7:]
+        return is_internal_ip(client_ip)
 
 
 def log_audit_action(request, action, model_name=None, object_id=None, object_name=None, changes=None):
@@ -274,9 +297,9 @@ class AssetViewSet(viewsets.ModelViewSet):
         
         return Response({'asset_tag': asset.asset_tag, 'qr_code': f'data:image/png;base64,{img_base64}', 'url': qr_url})
     
-    @action(detail=False, methods=['post'], permission_classes=[permissions.AllowAny])
+    @action(detail=False, methods=['post'], permission_classes=[InternalNetworkOnlyPermission])
     def scan(self, request):
-        """Сканирование QR-кода актива по asset_tag (публичный доступ)"""
+        """Сканирование QR-кода актива по asset_tag (доступ только из внутренней сети)"""
         asset_tag = request.data.get('asset_tag')
         
         if not asset_tag:

@@ -139,7 +139,7 @@ AUTH_USER_MODEL = "accounts.CustomUser"
 # CORS Settings
 CORS_ALLOWED_ORIGINS = config(
     'CORS_ALLOWED_ORIGINS',
-    default='http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,https://kkk-vdxl.vercel.app,http://kkk-vdxl.vercel.app,https://mtb-stem2026.vercel.app,http://mtb-stem2026.vercel.app'
+    default='http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,https://kkk-vdxl.vercel.app,http://kkk-vdxl.vercel.app,https://mtb-stem2026.vercel.app,http://mtb-stem2026.vercel.app,https://mtb-stem202612.vercel.app,http://mtb-stem202612.vercel.app'
 ).split(',')
 
 CORS_ALLOW_CREDENTIALS = True
