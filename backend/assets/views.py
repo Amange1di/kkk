@@ -6,7 +6,6 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django.shortcuts import get_object_or_404
 from django.db import transaction
 from django.core.cache import cache
-from django.utils import ip_address
 from .models import Asset, TransferHistory, AssetType
 from .serializers import AssetSerializer, TransferHistorySerializer, AssetTypeSerializer
 from accounts.models import CustomUser

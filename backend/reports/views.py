@@ -103,14 +103,14 @@ class ReportSummaryViewSet(viewsets.ViewSet):
             'total': queryset.count()
         })
     
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'], url_path='assets-summary')
     def assets_summary(self, request):
         """Сводка по активам - альтернативный маршрут /api/reports/assets-summary/"""
         return self.list(request)
-    
-    @action(detail=False, methods=['get'], url_path='export-assets')
-    def export_assets(self, request):
-        """Экспорт активов в Excel/CSV/PDF"""
+
+    @action(detail=False, methods=['get'], url_path='export')
+    def export_data(self, request):
+        """Экспорт активов в Excel/CSV/PDF - маршрут /api/reports/export/"""
         format = request.query_params.get('format', 'csv')
         
         queryset = Asset.objects.all()
@@ -303,52 +303,3 @@ class ReportSummaryViewSet(viewsets.ViewSet):
         response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="assets_{datetime.now().strftime("%Y%m%d")}.pdf"'
         return response
-
-
-class ReportExportViewSet(viewsets.ViewSet):
-    """ViewSet только для экспорта активов"""
-    permission_classes = [permissions.IsAuthenticated]
-    
-    def list(self, request):
-        """Экспорт активов в Excel/CSV/PDF"""
-        format = request.query_params.get('format', 'csv')
-        
-        queryset = Asset.objects.all()
-        
-        # Фильтры
-        status_filter = request.query_params.get('status')
-        if status_filter:
-            queryset = queryset.filter(status=status_filter)
-        
-        location_id = request.query_params.get('location_id')
-        if location_id:
-            queryset = queryset.filter(current_location_id=location_id)
-        
-        record_count = queryset.count()
-        
-        # Лог экспорта
-        ExportLog.objects.create(
-            user=request.user,
-            export_type='assets',
-            format=format,
-            filters={
-                'status': status_filter,
-                'location_id': location_id
-            },
-            record_count=record_count
-        )
-        
-        # Запись в аудит
-        log_audit_action(
-            request, 'export', 'Export', None, f'Assets export ({format})',
-            {'format': format, 'count': record_count, 'filters': {'status': status_filter, 'location_id': location_id}}
-        )
-        
-        if format == 'csv':
-            return self._export_csv(queryset)
-        elif format == 'excel':
-            return self._export_excel(queryset)
-        elif format == 'pdf':
-            return self._export_pdf(queryset)
-        else:
-            return Response({'error': 'Unsupported format'}, status=status.HTTP_400_BAD_REQUEST)
